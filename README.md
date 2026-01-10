@@ -32,7 +32,7 @@ The pipeline feeds data into Power BI for visual analysis.
 *(Risk Analysis: The "Budget Trap" Scatter Plot & ROI Efficiency by Budget Levels)*
 
 ### Data Model (Star Schema)
-![Data Model](assets/data_model.png)
+![Data Model](assets/data_model.jpg)
 *(Optimized Star Schema for high-performance querying)*
 
 ---
