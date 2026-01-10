@@ -23,9 +23,13 @@
 ## 3. Data Visualization (Dashboard)
 The pipeline feeds data into Power BI for visual analysis.
 
-### Dashboard Overview
-![Dashboard Overview](assets/dashboard_overview.png)
-*(Interactive Dashboard showing Revenue vs Budget trends 2000-2026)*
+### Financial Dashboard Overview
+![Financial Analysis](assets/financial_dashboard.jpg)
+*(Key Financial KPIs: Revenue Growth vs Profit Trends (2000-2025) & Top 10 Blockbusters)*
+
+### Market & Strategy Dashboard
+![Market Analysis](assets/market_dashboard.jpg)
+*(Risk Analysis: The "Budget Trap" Scatter Plot & ROI Efficiency by Budget Levels)*
 
 ### Data Model (Star Schema)
 ![Data Model](assets/data_model.png)
