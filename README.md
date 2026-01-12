@@ -1,72 +1,115 @@
-#  End-to-End Movie Data Engineering Pipeline
+#  Movie Investment Strategy & Market Analysis (2000-2026)
 
-> **Automated ETL System & Financial Analytics (2000-2026)**
+> **"Stop Guessing, Start Calculating."** - An End-to-End Data Engineering & Business Intelligence project designed to decode the profitability formula of the modern film industry.
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue.svg) ![SQL Server](https://img.shields.io/badge/SQL%20Server-2019-red.svg) ![Power BI](https://img.shields.io/badge/Power%20BI-Desktop-yellow.svg)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white) ![SQL Server](https://img.shields.io/badge/SQL_Server-2019-CC2927?logo=microsoft-sql-server&logoColor=white) ![Power BI](https://img.shields.io/badge/Power_BI-Desktop-F2C811?logo=power-bi&logoColor=black) ![ETL](https://img.shields.io/badge/ETL-Automated-success)
 
-## 1. Project Overview
-**The Context:** The film industry faces a "ROI Paradox" post-2020. While revenues are recovering, profit margins are shrinking due to inflation.
-**The Goal:** Build an automated pipeline to ingest, clean, and analyze 26 years of movie data (12,000+ records) to find safe investment strategies.
+## 1. The Business Problem: "The Revenue Paradox"
+The film industry is currently facing a critical financial disconnect:
+* **Vanity Metrics vs. Reality:** Box office numbers are breaking records, but **Net Profit Margins** are shrinking due to skyrocketing production budgets and marketing costs.
+* **The Risk Factor:** Investors are often blinded by Gross Revenue, ignoring the **Break-Even Point**. A $200M blockbuster needs ~$400M+ just to start making a profit.
 
----
-
-## 2. System Architecture
-**Data Flow:** TMDB API -> Python Scripts (ETL) -> SQL Server (Data Warehouse) -> Power BI (Dashboard).
-
-### Technical Highlights
-* **Incremental Load:** The system automatically checks the database and only fetches *new* movies (`auto_etl.py`).
-* **Multithreading:** Utilized 8 concurrent workers to speed up financial data extraction by 10x (`financial.py`).
-* **Robustness:** Automated logging, error handling for API limits, and daily CSV backups.
+**Project Goal:** Build an automated system to ingest 26 years of data, clean out statistical noise, and identify **"Safe Harbor"** investment zones to maximize capital efficiency.
 
 ---
 
-## 3. Data Visualization (Dashboard)
-The pipeline feeds data into Power BI for visual analysis.
+## 2. Data Engineering Pipeline
 
-### Financial Dashboard Overview
-![Financial Analysis](assets/financial_dashboard.jpg)
-*(Key Financial KPIs: Revenue Growth vs Profit Trends (2000-2025) & Top 10 Blockbusters)*
+###  Tech Stack
+* **Source:** TMDB API (The Movie Database).
+* **Extraction:** Python (`requests`, `ThreadPoolExecutor` for concurrent fetching).
+* **Transformation:** Pandas (Data Cleaning & Normalization).
+* **Storage:** SQL Server (Optimized Star Schema: `Fact_Financials`, `Dim_Movies`, `Bridge_Genres`).
+* **Visualization:** Power BI.
 
-### Market & Strategy Dashboard
-![Market Analysis](assets/market_dashboard.jpg)
-*(Risk Analysis: The "Budget Trap" Scatter Plot & ROI Efficiency by Budget Levels)*
+###  Data Cleaning Strategy (Crucial Step)
+Raw data from APIs is often noisy. To ensure high-quality insights, I applied a **Strict Financial Filter**:
+1.  **Completeness:** Exclude movies with missing Budget or Revenue data.
+2.  **The $10k Threshold:**
+    * `Budget > $10,000` AND `Revenue > $10,000`.
+    * *Reasoning:* This eliminates amateur productions and data errors, ensuring the analysis focuses only on **Commercial Films**.
+3.  **Result:** Filtered 12,000+ raw records down to **~7,242 high-quality movies** for analysis.
 
-### Data Model (Star Schema)
-![Data Model](assets/data_model.jpg)
-*(Optimized Star Schema for high-performance querying)*
-
----
-
-## 4. Key Business Insights
-Based on the analysis of 12,000+ movies:
-
-### Insight 1: The Efficiency Paradox (ROI vs Budget)
-* **Finding:** Data proves the "Law of Diminishing Returns". Low-budget films (<$20M) achieve an average **ROI of ~10x**, while Blockbusters (>$100M) only average an **ROI of ~2x**.
-* **Strategy:** Invest in a portfolio of 20 mid-budget films rather than betting on 1 mega-blockbuster to maximize capital efficiency.
-
-### Insight 2: The $150M "Death Zone"
-* **Finding:** The Scatter Plot reveals a "Budget Trap". Movies with production budgets exceeding **$150M** show a significantly higher density of financial failures (Red dots) due to the massive break-even point requirement.
-* **Implication:** A strict Budget Cap of $150M is recommended for non-franchise projects to minimize risk.
-
-### Insight 3: The "Dump Months" Arbitrage
-* **Finding:** While Summer is for Action movies, **January & February** (historically "dump months") are actually Gold Mines for **Romance & Drama** genres with high ROI due to low market competition.
-* **Strategy:** Avoid releasing Drama films in May-July; target Q1 or Q4 instead.
+![Data Model](assets/Model.jpg)
+*(The Star Schema design optimized for high-performance BI reporting)*
 
 ---
 
-## 5. How to Run
-1.  **Clone repo:** `git clone https://github.com/ElysiaTheElysier/Movie-Analysis-Pipeline.git`
-2.  **Install requirements:** `pip install -r requirements.txt`
-3.  **Config:** Set API Key in `Script/config.py`.
-4.  **Run:** Execute `Run_pipeline.bat`.
+## 3. Dashboard Showcase
+
+### A. The Profitability Matrix (Risk vs. Reward)
+The core strategic tool separating "Winners" from "Losers."
+* **Red Zone (Risk):** Revenue < 2x Budget (Fails to cover Marketing & Theater splits).
+* **Blue Zone (Profit):** Revenue >= 2x Budget (True Profitability).
+
+![Risk Matrix](assets/image_3368c9.png)
+
+### B. Market & Financial Overview
+Tracking cash flow trends, ROI by budget levels, and seasonal opportunities.
+
+| Financial Dashboard | Market Dashboard |
+|:---:|:---:|
+| ![Financial](assets/Financial_Dashboard.jpg) | ![Market](assets/Market_Dashboard.jpg) |
+| *Cash Flow Tracking & Top Performers* | *ROI by Budget Levels & Seasonal Trends* |
 
 ---
-## 6. Interactive Demo & Full Report
-To fully evaluate the analytical depth and technical interactivity of this project, please refer to the resources below:
 
+## 4. Strategic Executive Recommendations
 
-### 📑 Deep-Dive Market Report (PDF)
-👉 **[Read the Full PDF Report Here](Movie_Industry_Analysis_Report_2026.pdf)**
+Based on the analysis of 7,242 commercial movies, the following **Core Investment Pillars** have been identified to optimize capital efficiency:
+
+### Pillar 1: The Polarization Strategy (Avoid the Middle)
+* **Action:** **Eliminate medium-budget projects ($20M - $100M).**
+* **Rationale:** Data proves this range is the "Death Valley" of investment—too expensive to be agile, but too cheap to be a spectacle. Investors should polarize capital: either fund **Ultra-Lean productions** (for high ROI efficiency) or **Massive Spectacles** (for market share), with no middle ground.
+
+### Pillar 2: Portfolio "Barbell" Structure
+* **Action:** **Use niche films to subsidize blockbusters.**
+* **Rationale:** High-budget films are volatile. The portfolio must be anchored by a steady stream of low-budget, high-ROI films (e.g., Horror/Documentary). These "Cash Cows" provide the operational liquidity to absorb the risks of larger, franchise-driven projects.
+
+### Pillar 3: Counter-Programming Releases
+* **Action:** **Exploit market inefficiencies by targeting "off-peak" windows.**
+* **Rationale:** Instead of competing head-to-head during saturated seasons (Summer), release schedules should target underserved windows (like Q1 or Q4). Data shows that releasing against the grain significantly lowers marketing costs (CPM) and increases screen retention.
+
+### Pillar 4: Risk Mitigation via IP
+* **Action:** **Restrict high-cap investments to established Intellectual Property.**
+* **Rationale:** Investing >$100M in original screenplays is statistically a gamble. The "Greenlight" for high-budget projects must be strictly reserved for Franchises, Sequels, or Adaptations to ensure a safety floor for revenue.
+
+---
+
+## 5. Skills Demonstrated
+
+* **Python Programming:**
+    * Automated ETL Pipeline development.
+    * Handling API Rate Limits & Pagination.
+    * **Multithreading:** Optimized data fetching speed by 10x.
+* **Database Management (SQL):**
+    * Data Warehouse design (Star Schema).
+    * Data Integrity & Normalization.
+* **Data Visualization (Power BI):**
+    * Advanced DAX (Calculated Columns for ROI, Dynamic Color Formatting).
+    * UI/UX Design for Dashboards.
+    * Storytelling with Data.
+* **Business Intelligence:**
+    * Translating raw numbers into actionable investment strategies.
+    * Risk Assessment & Portfolio Management.
+
+---
+
+## 6. How to Run
+
+1.  **Clone Repository:**
+    ```bash
+    git clone [https://github.com/YourUsername/Movie-Analysis.git](https://github.com/YourUsername/Movie-Analysis.git)
+    ```
+2.  **Install Dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  **Configuration:**
+    * Create a `Script/config.py` file.
+    * Add your TMDB API Key and SQL Server Name.
+4.  **Execute Pipeline:**
+    * Run `Run_pipeline.bat`. The system will automatically fetch, clean, and load the data.
 
 ---
 *Author: Lam Hai Duong*
