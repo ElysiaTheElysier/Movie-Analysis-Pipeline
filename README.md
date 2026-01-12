@@ -42,14 +42,14 @@ The core strategic tool separating "Winners" from "Losers."
 * **Red Zone (Risk):** Revenue < 2x Budget (Fails to cover Marketing & Theater splits).
 * **Blue Zone (Profit):** Revenue >= 2x Budget (True Profitability).
 
-![Risk Matrix](assets/image_3368c9.png)
+![Risk Matrix](assets/risk_matrix.jpg)
 
 ### B. Market & Financial Overview
 Tracking cash flow trends, ROI by budget levels, and seasonal opportunities.
 
 | Financial Dashboard | Market Dashboard |
 |:---:|:---:|
-| ![Financial](assets/Financial_Dashboard.jpg) | ![Market](assets/Market_Dashboard.jpg) |
+| ![Financial](assets/financial_dashboard.jpg) | ![Market](assets/market_dashboard.jpg) |
 | *Cash Flow Tracking & Top Performers* | *ROI by Budget Levels & Seasonal Trends* |
 
 ---
