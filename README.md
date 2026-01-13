@@ -29,21 +29,52 @@ Raw data from APIs is often noisy. To ensure high-quality insights, I applied a 
     * `Budget > $10,000` AND `Revenue > $10,000`.
     * *Reasoning:* This eliminates amateur productions and data errors, ensuring the analysis focuses only on **Commercial Films**.
 3.  **Result:** Filtered 12,000+ raw records down to **~7,242 high-quality movies** for analysis.
-```mermaid
-flowchart TD
-    subgraph S1["Data Acquisition"]
-        A["TMDB API"] -->|Requests| B("final_etl.py")
-        B -->|Clean| C{"Data Check"}
-    end
+<h2 align="center">⚙️ Architecture: The Data Pipeline</h2>
+<p align="center">Hệ thống luồng dữ liệu tự động từ nguồn đến báo cáo.</p>
 
-    subgraph S2["Storage"]
-        C -->|Save| D[("SQL Server")]
-    end
+<div align="center">
 
-    subgraph S3["Analysis"]
-        D -->|Query| E["Power BI"]
-    end
-```
+<table>
+  <tr>
+    <td align="center" width="140">
+      <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ed904180b91e6f0cc8e3ca30424751995960dddfb9ad952fa58b.svg" width="65" alt="TMDB API Logo"/>
+      <br/><br/>
+      <b>1. Data Source</b><br/>
+      <sub>(TMDB API)</sub>
+    </td>
+
+    <td align="center" width="50"><h1>➝</h1></td>
+
+    <td align="center" width="140">
+      <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" width="65" alt="Python Logo"/>
+      <br/><br/>
+      <b>2. ETL & Processing</b><br/>
+      <sub>(Python Scripts)</sub>
+    </td>
+
+    <td align="center" width="50"><h1>➝</h1></td>
+
+    <td align="center" width="140">
+      <img src="https://www.svgrepo.com/show/303229/microsoft-sql-server-logo.svg" width="65" alt="SQL Server Logo"/>
+      <br/><br/>
+      <b>3. Data Warehouse</b><br/>
+      <sub>(SQL Server - Star Schema)</sub>
+    </td>
+
+    <td align="center" width="50"><h1>➝</h1></td>
+
+    <td align="center" width="140">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/c/cf/New_Power_BI_Logo.svg" width="65" alt="Power BI Logo"/>
+      <br/><br/>
+      <b>4. Visualization</b><br/>
+      <sub>(Power BI Dashboards)</sub>
+    </td>
+  </tr>
+</table>
+
+</div>
+<br/>
+<hr/>
 ![Data Model](assets/Model.jpg)
 *(The Star Schema design optimized for high-performance BI reporting)*
 
