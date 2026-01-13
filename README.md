@@ -29,7 +29,19 @@ Raw data from APIs is often noisy. To ensure high-quality insights, I applied a 
     * `Budget > $10,000` AND `Revenue > $10,000`.
     * *Reasoning:* This eliminates amateur productions and data errors, ensuring the analysis focuses only on **Commercial Films**.
 3.  **Result:** Filtered 12,000+ raw records down to **~7,242 high-quality movies** for analysis.
-
+```mermaid
+graph TD
+    subgraph "Data Acquisition"
+        A[TMDB API] -->|Requests| B(final_etl.py)
+        B -->|Clean| C{Data Check}
+    end
+    subgraph "Storage"
+        C -->|Save| D[(SQL Server)]
+    end
+    subgraph "Analysis"
+        D -->|Query| E[Power BI]
+    end
+```
 ![Data Model](assets/Model.jpg)
 *(The Star Schema design optimized for high-performance BI reporting)*
 
