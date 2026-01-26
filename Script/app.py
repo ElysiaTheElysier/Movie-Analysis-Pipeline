@@ -83,6 +83,19 @@ def analyze_risk(budget, raw_pred, dir_raw, cast_raw, is_franchise, overview):
     return final_pred, final_pred * 0.7, warnings, risk_score
 
 # --- 5. GIAO DIỆN CHÍNH ---
+import pickle
+import streamlit as st
+from pathlib import Path
+
+@st.cache_resource
+def load_model():
+    model_path = Path(__file__).parent / "film_revenue_v25.pkl"
+    if not model_path.exists():
+        return None
+    with open(model_path, "rb") as f:
+        return pickle.load(f)
+
+model = load_model()
 
 if model is None: st.stop()
 
