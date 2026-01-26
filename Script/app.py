@@ -8,44 +8,59 @@ import difflib
 st.set_page_config(page_title="Hollywood Dashboard", page_icon="🎬", layout="wide")
 
 # --- 2. CSS FULL TRÀN VIỀN (KHÔNG LỀ) ---
-st.markdown("""
-    <style>
-        .block-container {
-            padding: 0rem !important;
-            max-width: 100% !important;
-        }
-        header, footer {visibility: hidden;}
+# st.markdown("""
+#     <style>
+#         .block-container {
+#             padding: 0rem !important;
+#             max-width: 100% !important;
+#         }
+#         header, footer {visibility: hidden;}
         
-        /* Tab nằm gọn gàng trên nền tối */
-        .stTabs {
-            padding-left: 1rem;
-            padding-top: 0.5rem;
-            background-color: #0e1117; 
-        }
+#         /* Tab nằm gọn gàng trên nền tối */
+#         .stTabs {
+#             padding-left: 1rem;
+#             padding-top: 0.5rem;
+#             background-color: #0e1117; 
+#         }
         
-        /* Iframe cao kịch kim */
-        iframe {
-            display: block;
-            border: none;
-            height: 94vh !important; /* Chiều cao tối đa */
-            width: 100% !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
+#         /* Iframe cao kịch kim */
+#         iframe {
+#             display: block;
+#             border: none;
+#             height: 94vh !important; /* Chiều cao tối đa */
+#             width: 100% !important;
+#         }
+#     </style>
+# """, unsafe_allow_html=True)
 
-# --- 3. LOAD RESOURCES ---
+import os # Nhớ thêm dòng này lên đầu file nếu chưa có
+
+# --- 3. LOAD RESOURCES (PHIÊN BẢN SỬA LỖI) ---
 @st.cache_resource
 def load_resources():
     try:
-        model = joblib.load('film_revenue_v25.pkl')
-        nlp_pipe = joblib.load('tfidf_v25.pkl')
-        features = joblib.load('features_v25.pkl')
-        knowledge, global_stats = joblib.load('knowledge_v25.pkl')
-        return model, nlp_pipe, features, knowledge, global_stats
-    except:
-        return None, None, None, None, None
+        # Lấy đường dẫn tuyệt đối của folder chứa file app.py này
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Ghép đường dẫn để tìm file .pkl (Bất chấp app.py đang ở đâu)
+        model_path = os.path.join(current_dir, 'film_revenue_v25.pkl')
+        tfidf_path = os.path.join(current_dir, 'tfidf_v25.pkl')
+        knowledge_path = os.path.join(current_dir, 'knowledge_v25.pkl')
+        features_path = os.path.join(current_dir, 'features_v25.pkl')
 
-model, nlp_pipe, features, knowledge, global_stats = load_resources()
+        # Load file
+        model = joblib.load(model_path)
+        nlp_pipe = joblib.load(tfidf_path)
+        knowledge = joblib.load(knowledge_path)
+        
+        # Riêng cái features nếu là list thì load kiểu khác, nếu không có file thì gán cứng
+        # (Dựa trên code cũ của bạn, tôi giả định bạn có file features_v25.pkl)
+        features = joblib.load(features_path) 
+        
+        return model, nlp_pipe, knowledge, features
+    except Exception as e:
+        st.error(f"❌ Lỗi không tìm thấy file: {e}")
+        return None, None, None, None
 
 # --- 4. LOGIC AI ---
 def get_power_score(name, role_dict, global_stats):
