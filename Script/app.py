@@ -3,68 +3,77 @@ import pandas as pd
 import numpy as np
 import joblib
 import difflib
+import os
 
 # --- 1. CẤU HÌNH FULL MÀN HÌNH ---
 st.set_page_config(page_title="Hollywood Dashboard", page_icon="🎬", layout="wide")
 
-# --- 2. CSS FULL TRÀN VIỀN (KHÔNG LỀ) ---
-# st.markdown("""
-#     <style>
-#         .block-container {
-#             padding: 0rem !important;
-#             max-width: 100% !important;
-#         }
-#         header, footer {visibility: hidden;}
+# --- 2. CSS FULL TRÀN VIỀN ---
+st.markdown("""
+    <style>
+        .block-container {
+            padding: 0rem !important;
+            max-width: 100% !important;
+        }
+        header, footer {visibility: hidden;}
         
-#         /* Tab nằm gọn gàng trên nền tối */
-#         .stTabs {
-#             padding-left: 1rem;
-#             padding-top: 0.5rem;
-#             background-color: #0e1117; 
-#         }
+        /* Tab nằm gọn gàng trên nền tối */
+        .stTabs {
+            padding-left: 1rem;
+            padding-top: 0.5rem;
+            background-color: #0e1117; 
+        }
         
-#         /* Iframe cao kịch kim */
-#         iframe {
-#             display: block;
-#             border: none;
-#             height: 94vh !important; /* Chiều cao tối đa */
-#             width: 100% !important;
-#         }
-#     </style>
-# """, unsafe_allow_html=True)
+        /* Iframe cao kịch kim */
+        iframe {
+            display: block;
+            border: none;
+            height: 94vh !important; /* Chiều cao tối đa */
+            width: 100% !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-import os # Nhớ thêm dòng này lên đầu file nếu chưa có
-
-# --- 3. LOAD RESOURCES (PHIÊN BẢN SỬA LỖI) ---
+# --- 3. LOAD RESOURCES (ĐÃ SỬA CHUẨN) ---
 @st.cache_resource
 def load_resources():
     try:
-        # Lấy đường dẫn tuyệt đối của folder chứa file app.py này
+        # Lấy đường dẫn tuyệt đối (Fix lỗi không tìm thấy file trên Cloud)
         current_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Ghép đường dẫn để tìm file .pkl (Bất chấp app.py đang ở đâu)
         model_path = os.path.join(current_dir, 'film_revenue_v25.pkl')
         tfidf_path = os.path.join(current_dir, 'tfidf_v25.pkl')
         knowledge_path = os.path.join(current_dir, 'knowledge_v25.pkl')
         features_path = os.path.join(current_dir, 'features_v25.pkl')
 
-        # Load file
+        # Dùng joblib để load (Fix lỗi UnpicklingError)
         model = joblib.load(model_path)
         nlp_pipe = joblib.load(tfidf_path)
-        knowledge = joblib.load(knowledge_path)
+        features = joblib.load(features_path)
         
-        # Riêng cái features nếu là list thì load kiểu khác, nếu không có file thì gán cứng
-        # (Dựa trên code cũ của bạn, tôi giả định bạn có file features_v25.pkl)
-        features = joblib.load(features_path) 
-        
-        return model, nlp_pipe, knowledge, features
+        # Load knowledge và tách ra thành 2 biến (Fix lỗi thiếu global_stats)
+        knowledge_data = joblib.load(knowledge_path)
+        if isinstance(knowledge_data, (tuple, list)) and len(knowledge_data) == 2:
+            knowledge, global_stats = knowledge_data
+        else:
+            # Fallback nếu file lưu kiểu khác (tránh crash)
+            knowledge = knowledge_data
+            global_stats = {'avg_revenue': 50000000} # Giá trị mặc định an toàn
+
+        return model, nlp_pipe, features, knowledge, global_stats
     except Exception as e:
-        st.error(f"❌ Lỗi không tìm thấy file: {e}")
-        return None, None, None, None
+        st.error(f"❌ Lỗi khi tải dữ liệu: {e}")
+        return None, None, None, None, None
+
+# Gọi hàm để lấy dữ liệu
+model, nlp_pipe, features, knowledge, global_stats = load_resources()
 
 # --- 4. LOGIC AI ---
 def get_power_score(name, role_dict, global_stats):
     if not name or len(name.strip()) < 2: return np.log1p(global_stats['avg_revenue']), 0, None
+    # Kiểm tra xem role_dict có phải là dict không để tránh lỗi
+    if not isinstance(role_dict, dict): return np.log1p(global_stats['avg_revenue']), 0, None
+    
     matches = difflib.get_close_matches(name, role_dict.keys(), n=1, cutoff=0.6)
     if matches:
         real_name = matches[0]
@@ -83,39 +92,19 @@ def analyze_risk(budget, raw_pred, dir_raw, cast_raw, is_franchise, overview):
     return final_pred, final_pred * 0.7, warnings, risk_score
 
 # --- 5. GIAO DIỆN CHÍNH ---
-import pickle
-import streamlit as st
-from pathlib import Path
 
-@st.cache_resource
-def load_model():
-    model_path = Path(__file__).parent / "film_revenue_v25.pkl"
-    if not model_path.exists():
-        return None
-    with open(model_path, "rb") as f:
-        return pickle.load(f)
-
-model = load_model()
-
-if model is None: st.stop()
+if model is None: 
+    st.warning("Đang chờ tải Model...")
+    st.stop()
 
 tab_bi, tab_ai = st.tabs(["📊 DASHBOARD", "🤖 AI TOOL"])
 
 # ==============================================================================
-# TAB 1: DASHBOARD (AUTO PAGE 1 - LOGIC CỦA BẠN)
+# TAB 1: DASHBOARD
 # ==============================================================================
 with tab_bi:
-    # Link gốc
     base_url = "https://app.powerbi.com/view?r=eyJrIjoiN2Q0ZjcxY2EtNmRlNy00Y2VjLTg4MGQtZDE5YjRlYmYyY2U5IiwidCI6IjVlOGIzMjY5LTc2Y2EtNDU3Yy04NDdmLTQ0NGUzZGI5ODZhNyIsImMiOjl9"
-    
-    # Target Page fix cứng là ReportSection1 như code bạn chọn
-    target_page = "ReportSection1" 
-    
-    # Tạo link final
-    if target_page:
-        final_link = f"{base_url}&pageName={target_page}"
-    else:
-        final_link = base_url
+    final_link = f"{base_url}&pageName=ReportSection1"
 
     st.markdown(f"""
         <iframe title="Film Analysis" 
@@ -125,7 +114,7 @@ with tab_bi:
     """, unsafe_allow_html=True)
 
 # ==============================================================================
-# TAB 2: AI TOOL (TRỐNG TRƠN - KHÔNG NHẬP SẴN)
+# TAB 2: AI TOOL
 # ==============================================================================
 with tab_ai:
     with st.container():
@@ -134,7 +123,6 @@ with tab_ai:
         
         col_input, col_result = st.columns([1, 1.5])
         with col_input:
-            # --- CÁC Ô NHẬP LIỆU ĐỂ TRỐNG ---
             movie_name = st.text_input("Tên phim", "", placeholder="Nhập tên dự án...")
             overview = st.text_area("Cốt truyện", "", placeholder="Nhập tóm tắt nội dung phim...")
             budget = st.number_input("Ngân sách ($)", min_value=0, value=0, step=1000000, help="Nhập số tiền đầu tư")
@@ -149,18 +137,27 @@ with tab_ai:
 
         with col_result:
             if btn:
-                # --- KIỂM TRA DỮ LIỆU ĐẦU VÀO ---
                 if not movie_name or not overview or not director or not actor or budget == 0:
                     st.warning("⚠️ Vui lòng nhập đầy đủ thông tin trước khi phân tích!")
                 else:
-                    # Chạy Model khi đã có dữ liệu
-                    dir_power, dir_raw, _ = get_power_score(director, knowledge['Director'], global_stats)
-                    cast_power, cast_raw, _ = get_power_score(actor, knowledge['Actor'], global_stats)
+                    # Chạy Model
+                    # Lấy knowledge dict từ biến đã load
+                    # Kiểm tra an toàn cho dictionary
+                    director_dict = knowledge.get('Director', {}) if isinstance(knowledge, dict) else {}
+                    actor_dict = knowledge.get('Actor', {}) if isinstance(knowledge, dict) else {}
+
+                    dir_power, dir_raw, _ = get_power_score(director, director_dict, global_stats)
+                    cast_power, cast_raw, _ = get_power_score(actor, actor_dict, global_stats)
+                    
                     idf = pd.DataFrame(0.0, index=[0], columns=features)
-                    idf['budget_log'] = np.log1p(budget); idf['cast_power'] = cast_power; idf['director_power'] = dir_power
-                    idf['is_franchise'] = 1 if is_fran else 0; idf['budget_x_cast'] = np.log1p(budget) * cast_power
+                    idf['budget_log'] = np.log1p(budget)
+                    idf['cast_power'] = cast_power
+                    idf['director_power'] = dir_power
+                    idf['is_franchise'] = 1 if is_fran else 0
+                    idf['budget_x_cast'] = np.log1p(budget) * cast_power
                     idf['budget_x_franchise'] = np.log1p(budget) * (1 if is_fran else 0)
                     idf['cast_x_director'] = cast_power * dir_power
+                    
                     vec = nlp_pipe.transform([overview])
                     for i in range(30): idf[f'nlp_{i}'] = vec[0, i]
                     
