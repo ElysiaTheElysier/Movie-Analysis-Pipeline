@@ -6,45 +6,145 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 import config
 
-# Config
+# --- CONFIGURATION ---
 API_KEY = config.TMDB_API_KEY
 SERVER = config.SERVER_NAME
 DB = "Movie_DB"
-THRESHOLD = 10000 
 WORKERS = 20
 SESSION = requests.Session()
 
 def get_db():
-    # SQL Server connection string
     params = urllib.parse.quote_plus(
         f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={SERVER};DATABASE={DB};Trusted_Connection=yes;"
     )
     return create_engine(f"mssql+pyodbc:///?odbc_connect={params}", fast_executemany=True)
 
-def get_existing():
-    # Fetch existing IDs to avoid duplication
-    try:
-        return set(pd.read_sql("SELECT movie_id FROM Dim_Movies", get_db())['movie_id'])
-    except:
-        return set()
+# --- SCHEMA OPS (AUTO-FIX TABLES) ---
+def init_db():
+    engine = get_db()
+    with engine.begin() as conn: # Use transaction to ensure schema is committed
+        # 1. Create Tables if not exist
+        conn.execute(text("""
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Dim_Movie_Rich_Info' AND xtype='U')
+            CREATE TABLE Dim_Movie_Rich_Info (
+                movie_id INT PRIMARY KEY,
+                collection_name NVARCHAR(255),
+                production_company NVARCHAR(255),
+                mpaa_rating NVARCHAR(50),
+                runtime INT,
+                tagline NVARCHAR(MAX),
+                overview NVARCHAR(MAX)
+            )
+        """))
+        
+        # 2. Force-Patch Missing Columns (Safe run)
+        # Using try-catch block in SQL to ignore errors if column exists
+        conn.execute(text("""
+            IF COL_LENGTH('Dim_Movie_Rich_Info', 'production_company') IS NULL
+            BEGIN
+                ALTER TABLE Dim_Movie_Rich_Info ADD production_company NVARCHAR(255);
+            END
+        """))
+        conn.execute(text("""
+            IF COL_LENGTH('Dim_Movie_Rich_Info', 'mpaa_rating') IS NULL
+            BEGIN
+                ALTER TABLE Dim_Movie_Rich_Info ADD mpaa_rating NVARCHAR(50);
+            END
+        """))
 
-def fetch_data(mid):
-    url = f"https://api.themoviedb.org/3/movie/{mid}?api_key={API_KEY}"
+        # 3. Create Credits Table
+        conn.execute(text("""
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Bridge_Credits' AND xtype='U')
+            CREATE TABLE Bridge_Credits (
+                credit_unique_id NVARCHAR(100) PRIMARY KEY,
+                movie_id INT,
+                person_id INT,
+                name NVARCHAR(255),
+                role NVARCHAR(50),
+                item_order INT
+            )
+        """))
+    print("[INFO] Database schema verified and patched successfully.")
+
+# --- DATA OPS (ROBUST UPSERT) ---
+def robust_upsert(df, table_name, pk_cols, engine):
+    if df.empty: return
+    
+    # CRITICAL FIX: Remove internal duplicates to prevent MERGE failure
+    # If source has 2 identical rows, MERGE throws PK Violation
+    df = df.drop_duplicates(subset=pk_cols, keep='first')
+
+    temp_table = f"Temp_{table_name}_{int(datetime.now().timestamp())}"
     try:
-        r = SESSION.get(url, timeout=4)
+        df.to_sql(temp_table, engine, if_exists='replace', index=False)
+        cols = [c for c in df.columns]
+        
+        on_clause = " AND ".join([f"target.{c} = source.{c}" for c in pk_cols])
+        update_set = ", ".join([f"target.{c} = source.{c}" for c in cols if c not in pk_cols])
+        insert_cols = ", ".join(cols)
+        insert_vals = ", ".join([f"source.{c}" for c in cols])
+        
+        # Only generate UPDATE clause if there are non-PK columns
+        when_matched = f"WHEN MATCHED THEN UPDATE SET {update_set}" if update_set else ""
+        
+        sql = f"""
+            MERGE INTO {table_name} AS target
+            USING {temp_table} AS source
+            ON ({on_clause})
+            {when_matched}
+            WHEN NOT MATCHED THEN
+                INSERT ({insert_cols}) VALUES ({insert_vals});
+        """
+        with engine.begin() as conn:
+            conn.execute(text(sql))
+            conn.execute(text(f"DROP TABLE {temp_table}"))
+    except Exception as e:
+        print(f"[ERROR] Upsert failed for {table_name}: {e}")
+
+def upsert_genres(df, engine):
+    if df.empty: return
+    # Deduplicate genres dataframe as well
+    df = df.drop_duplicates()
+    
+    temp_table = f"Temp_Genres_{int(datetime.now().timestamp())}"
+    try:
+        df.to_sql(temp_table, engine, if_exists='replace', index=False)
+        sql = f"""
+            INSERT INTO Bridge_Movie_Genres (movie_id, genre_name)
+            SELECT DISTINCT t.movie_id, t.genre_name
+            FROM {temp_table} t
+            WHERE NOT EXISTS (
+                SELECT 1 FROM Bridge_Movie_Genres b 
+                WHERE b.movie_id = t.movie_id AND b.genre_name = t.genre_name
+            )
+        """
+        with engine.begin() as conn:
+            conn.execute(text(sql))
+            conn.execute(text(f"DROP TABLE {temp_table}"))
+    except Exception as e:
+        pass 
+
+def fetch_movie_details(mid):
+    url = f"https://api.themoviedb.org/3/movie/{mid}?api_key={API_KEY}&append_to_response=credits,release_dates"
+    try:
+        r = SESSION.get(url, timeout=5)
         if r.status_code != 200: return None
         d = r.json()
         
-        rev = d.get('revenue', 0)
-        bud = d.get('budget', 0)
-        ov = d.get('overview', '')
+        if d.get('vote_count', 0) < 5 and d.get('revenue', 0) == 0: return None
 
-        # Filter: Ignore movies with no revenue or description
-        if rev < 1: return None
-        if not ov or len(ov) < 10: return None
+        rating = 'NR'
+        for country in d.get('release_dates', {}).get('results', []):
+            if country['iso_3166_1'] == 'US':
+                for release in country['release_dates']:
+                    if release['certification']:
+                        rating = release['certification']
+                        break
+        
+        studio = d['production_companies'][0]['name'] if d.get('production_companies') else None
+        franchise = d['belongs_to_collection']['name'] if d.get('belongs_to_collection') else 'Stand-alone'
 
-        # 1. Dim_Movies
-        movie_info = {
+        dim_movie = {
             'movie_id': d['id'],
             'title': d['title'],
             'release_date': d.get('release_date'),
@@ -52,102 +152,105 @@ def fetch_data(mid):
             'popularity': d.get('popularity'),
             'vote_average': d.get('vote_average'),
             'vote_count': d.get('vote_count'),
-            'original_language': d.get('original_language')
+            'original_language': d.get('original_language'),
+            'overview': d.get('overview', '')[:4000]
         }
-
-        # 2. Fact_Financials
-        financial_info = {
+        fact_fin = {
             'movie_id': d['id'],
-            'budget': bud,
-            'revenue': rev,
-            'profit': rev - bud,
-            'roi': (rev - bud) / bud if bud > 0 else 0
+            'budget': d.get('budget', 0),
+            'revenue': d.get('revenue', 0),
+            'profit': d.get('revenue', 0) - d.get('budget', 0)
         }
-
-        # 3. Bridge_Movie_Genres (Normalization)
-        genre_list = []
-        for g in d.get('genres', []):
-            genre_list.append({
-                'movie_id': d['id'],
-                'genre_name': g['name']
+        rich_info = {
+            'movie_id': d['id'],
+            'collection_name': franchise,
+            'production_company': studio,
+            'mpaa_rating': rating,
+            'runtime': d.get('runtime', 0),
+            'tagline': d.get('tagline', ''),
+            'overview': d.get('overview', '')[:4000]
+        }
+        
+        credits_data = []
+        c = d.get('credits', {})
+        for crew in c.get('crew', []):
+            if crew['job'] == 'Director':
+                credits_data.append({
+                    'credit_unique_id': f"{d['id']}_DIR_{crew['id']}",
+                    'movie_id': d['id'], 'person_id': crew['id'], 'name': crew['name'], 'role': 'Director', 'item_order': 0
+                })
+                break
+        for actor in c.get('cast', [])[:8]:
+            credits_data.append({
+                'credit_unique_id': f"{d['id']}_ACT_{actor['id']}",
+                'movie_id': d['id'], 'person_id': actor['id'], 'name': actor['name'], 'role': 'Actor', 'item_order': actor['order']
             })
+            
+        genres_data = [{'movie_id': d['id'], 'genre_name': g['name']} for g in d.get('genres', [])]
 
-        return {
-            'dim': movie_info,
-            'fact': financial_info,
-            'bridge': genre_list
-        }
-    except:
-        return None
+        return {'dim': dim_movie, 'fact': fact_fin, 'rich': rich_info, 'credits': credits_data, 'genres': genres_data}
+    except: return None
 
+# --- MAIN EXECUTION ---
 def run():
-    print(f"[{datetime.now()}] Starting Star Schema ETL process...")
+    print(f"[{datetime.now()}] Starting ETL pipeline (Fixed Version)...")
+    init_db() # Ensure schema is ready
     eng = get_db()
     
-    # --- SCHEMA RESET (Updated for SQLAlchemy 2.0+) ---
-    # Uncomment lines below for the first run or to reset DB
-    #with eng.connect() as conn:
-     #   print("Resetting tables...")
-     #   conn.execute(text("DROP TABLE IF EXISTS Bridge_Movie_Genres"))
-     #   conn.execute(text("DROP TABLE IF EXISTS Fact_Financials"))
-     #   conn.execute(text("DROP TABLE IF EXISTS Dim_Movies"))
-     #   conn.commit()
+    candidates = set()
+    years = range(2000, 2027) 
+    print("Scanning TMDB for movie candidates...")
     
-    exist = get_existing()
-    print(f"Existing records: {len(exist)}")
-
-    # Strategy selection based on data volume
-    if len(exist) < THRESHOLD:
-        print("Mode: FULL LOAD (Deep Scan)")
-        years = range(2000, 2027)
-        pages = 50 
-        strats = ['revenue.desc']
-    else:
-        print("Mode: INCREMENTAL LOAD (Latest updates)")
-        years = [2025, 2026]
-        pages = 5
-        strats = ['release_date.desc']
-
-    batch_dim, batch_fact, batch_bridge = [], [], []
-    
-    for y in years:
-        print(f"Processing year: {y}")
-        candidates = set()
-        
-        # 1. ID Discovery
-        for s in strats:
+    # Using 3 main strategies to get best coverage
+    for year in years:
+        strategies = [('popularity.desc', 5), ('revenue.desc', 3), ('vote_count.desc', 2)]
+        for sort_by, pages in strategies:
             for p in range(1, pages + 1):
                 try:
-                    u = f"https://api.themoviedb.org/3/discover/movie?api_key={API_KEY}&sort_by={s}&primary_release_year={y}&vote_count.gte=10&page={p}"
-                    res = SESSION.get(u, timeout=3).json().get('results', [])
-                    if not res: break
-                    for x in res:
-                        if x['id'] not in exist: candidates.add(x['id'])
+                    u = f"https://api.themoviedb.org/3/discover/movie?api_key={API_KEY}&sort_by={sort_by}&primary_release_year={year}&vote_count.gte=5&page={p}"
+                    res = SESSION.get(u).json().get('results', [])
+                    for i in res: candidates.add(i['id'])
                 except: continue
+                
+    print(f"Found {len(candidates)} unique candidates to process.")
+
+    batch_size = 200
+    buffer = {'dim': [], 'fact': [], 'rich': [], 'credits': [], 'genres': []}
+    
+    with ThreadPoolExecutor(max_workers=WORKERS) as ex:
+        futures = {ex.submit(fetch_movie_details, mid): mid for mid in candidates}
         
-        if not candidates: continue
-        print(f"-> Found {len(candidates)} new candidates. Fetching details...")
+        for idx, f in enumerate(as_completed(futures)):
+            res = f.result()
+            if res:
+                buffer['dim'].append(res['dim'])
+                buffer['fact'].append(res['fact'])
+                buffer['rich'].append(res['rich'])
+                buffer['credits'].extend(res['credits'])
+                buffer['genres'].extend(res['genres'])
+            
+            # Save Batch
+            if (idx + 1) % batch_size == 0 or (idx + 1) == len(futures):
+                print(f"Saving batch {idx+1}/{len(candidates)}...")
+                
+                # Convert to DataFrame
+                df_dim = pd.DataFrame(buffer['dim'])
+                df_fact = pd.DataFrame(buffer['fact'])
+                df_rich = pd.DataFrame(buffer['rich'])
+                df_cred = pd.DataFrame(buffer['credits'])
+                df_gen = pd.DataFrame(buffer['genres'])
 
-        # 2. Parallel Extraction
-        with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-            futs = [ex.submit(fetch_data, i) for i in candidates]
-            for f in as_completed(futs):
-                r = f.result()
-                if r:
-                    batch_dim.append(r['dim'])
-                    batch_fact.append(r['fact'])
-                    batch_bridge.extend(r['bridge'])
-                    exist.add(r['dim']['movie_id'])
+                # UPSERT with Deduplication
+                robust_upsert(df_dim, 'Dim_Movies', ['movie_id'], eng)
+                robust_upsert(df_fact, 'Fact_Financials', ['movie_id'], eng)
+                robust_upsert(df_rich, 'Dim_Movie_Rich_Info', ['movie_id'], eng)
+                robust_upsert(df_cred, 'Bridge_Credits', ['credit_unique_id'], eng)
+                upsert_genres(df_gen, eng)
+                
+                # Reset Buffer
+                buffer = {'dim': [], 'fact': [], 'rich': [], 'credits': [], 'genres': []}
 
-        # 3. Batch Load to SQL
-        if batch_dim:
-            pd.DataFrame(batch_dim).to_sql('Dim_Movies', eng, if_exists='append', index=False)
-            pd.DataFrame(batch_fact).to_sql('Fact_Financials', eng, if_exists='append', index=False)
-            pd.DataFrame(batch_bridge).to_sql('Bridge_Movie_Genres', eng, if_exists='append', index=False)
-            print(f"   Committed: {len(batch_dim)} movies, {len(batch_bridge)} genre records.")
-            batch_dim, batch_fact, batch_bridge = [], [], [] # Clear buffer
-
-    print("ETL pipeline completed successfully.")
+    print(f"[{datetime.now()}] ETL process completed successfully.")
 
 if __name__ == "__main__":
     run()
