@@ -12,14 +12,14 @@
 
 ---
 
-##  System Architecture: The Data Pipeline
+## ⚙️ System Architecture: The Data Pipeline
 
 The system automates the journey from raw API data to actionable AI insights.
 
 ```mermaid
 graph LR
     A[TMDB API] -->|Raw JSON| B(Python ETL)
-    B -->|Cleaning & Logic| C[(SQL Server DW)]
+    B -->|Cleaning and Logic| C[(SQL Server DW)]
     C -->|Star Schema| D{Power BI}
     C -->|Training Data| E[AI Model Stacking]
     E -->|Predictions| D
@@ -28,9 +28,6 @@ graph LR
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style C fill:#ccf,stroke:#333,stroke-width:2px
     style E fill:#ff9,stroke:#333,stroke-width:2px
-
-```
-
 * **Data Filters:** Commercial films only (Revenue & Budget > $1,000,000).
 * **Interactive Controls:** Marketing Cost Slider (Investor adjustable) & Exhibitor Share (Default 50%).
 
