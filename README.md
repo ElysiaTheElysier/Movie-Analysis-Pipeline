@@ -1,5 +1,3 @@
-
-```markdown
 # 🎬 Capital Efficiency in the Post-Digital Film Industry
 ### An End-to-End Machine Learning & BI Framework for ROI Prediction
 
