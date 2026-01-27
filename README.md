@@ -1,160 +1,205 @@
-#  Movie Investment Strategy & Market Analysis (2000-2026)
 
-> **"Stop Guessing, Start Calculating."** - An End-to-End Data Engineering & Business Intelligence project designed to decode the profitability formula of the modern film industry.
+```markdown
+# 🎬 Capital Efficiency in the Post-Digital Film Industry
+### An End-to-End Machine Learning & BI Framework for ROI Prediction
 
-![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white) ![SQL Server](https://img.shields.io/badge/SQL_Server-2019-CC2927?logo=microsoft-sql-server&logoColor=white) ![Power BI](https://img.shields.io/badge/Power_BI-Desktop-F2C811?logo=power-bi&logoColor=black) ![ETL](https://img.shields.io/badge/ETL-Automated-success)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![SQL Server](https://img.shields.io/badge/SQL_Server-Data_Warehouse-CC2927?logo=microsoft-sql-server&logoColor=white)
+![Power BI](https://img.shields.io/badge/Power_BI-Business_Intelligence-F2C811?logo=power-bi&logoColor=black)
+![Scikit-Learn](https://img.shields.io/badge/ML-Stacking_Regressor-F7931E?logo=scikit-learn&logoColor=white)
 
-## 1. The Business Problem: "The Revenue Paradox"
-The film industry is currently facing a critical financial disconnect:
-* **Vanity Metrics vs. Reality:** Box office numbers are breaking records, but **Net Profit Margins** are shrinking due to skyrocketing production budgets and marketing costs.
-* **The Risk Factor:** Investors are often blinded by Gross Revenue, ignoring the **Break-Even Point**. A $200M blockbuster needs ~$400M+ just to start making a profit.
-
-**Project Goal:** Build an automated system to ingest 26 years of data, clean out statistical noise, and identify **"Safe Harbor"** investment zones to maximize capital efficiency.
-
----
-
-## 2. Data Engineering Pipeline
-
-###  Tech Stack
-* **Source:** TMDB API (The Movie Database).
-* **Extraction:** Python (`requests`, `ThreadPoolExecutor` for concurrent fetching).
-* **Transformation:** Pandas (Data Cleaning & Normalization).
-* **Storage:** SQL Server (Optimized Star Schema: `Fact_Financials`, `Dim_Movies`, `Bridge_Genres`).
-* **Visualization:** Power BI.
-
-###  Data Cleaning Strategy (Crucial Step)
-Raw data from APIs is often noisy. To ensure high-quality insights, I applied a **Strict Financial Filter**:
-1.  **Completeness:** Exclude movies with missing Budget or Revenue data.
-2.  **The $10k Threshold:**
-    * `Budget > $10,000` AND `Revenue > $10,000`.
-    * *Reasoning:* This eliminates amateur productions and data errors, ensuring the analysis focuses only on **Commercial Films**.
-3.  **Result:** Filtered 12,000+ raw records down to **~7,242 high-quality movies** for analysis.
-<h2 align="center">⚙️ Architecture: The Data Pipeline</h2>
-<p align="center">Hệ thống luồng dữ liệu tự động từ nguồn đến báo cáo.</p>
-
-<div align="center">
-
-<table>
-  <tr>
-    <td align="center" width="140">
-      <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ed904180b91e6f0cc8e3ca30424751995960dddfb9ad952fa58b.svg" width="65" alt="TMDB API Logo"/>
-      <br/><br/>
-      <b>1. Data Source</b><br/>
-      <sub>(TMDB API)</sub>
-    </td>
-
-    <td align="center" width="50"><h1>➝</h1></td>
-
-    <td align="center" width="140">
-      <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" width="65" alt="Python Logo"/>
-      <br/><br/>
-      <b>2. ETL & Processing</b><br/>
-      <sub>(Python Scripts)</sub>
-    </td>
-
-    <td align="center" width="50"><h1>➝</h1></td>
-
-    <td align="center" width="140">
-      <img src="https://www.svgrepo.com/show/303229/microsoft-sql-server-logo.svg" width="65" alt="SQL Server Logo"/>
-      <br/><br/>
-      <b>3. Data Warehouse</b><br/>
-      <sub>(SQL Server - Star Schema)</sub>
-    </td>
-
-    <td align="center" width="50"><h1>➝</h1></td>
-
-    <td align="center" width="140">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/c/cf/New_Power_BI_Logo.svg" width="65" alt="Power BI Logo"/>
-      <br/><br/>
-      <b>4. Visualization</b><br/>
-      <sub>(Power BI Dashboards)</sub>
-    </td>
-  </tr>
-</table>
-
-</div>
-<br/>
-<hr/>
-![Data Model](assets/Model.jpg)
-*(The Star Schema design optimized for high-performance BI reporting)*
+> **Executive Summary:** The film industry is facing a **"Revenue Paradox"**—while Gross Box Office creates record-breaking headlines, Net Profit Margins are collapsing due to the "Cost Squeeze" of marketing and production inflation. This project moves beyond vanity metrics to engineered **Capital Efficiency**, utilizing a 26-year dataset (2000-2025) to identify "Safe Harbor" investment zones and predict ROI with Machine Learning.
 
 ---
 
-## 3. Dashboard Showcase
+##  System Architecture: The Data Pipeline
 
-### A. The Profitability Matrix (Risk vs. Reward)
-The core strategic tool separating "Winners" from "Losers."
-* **Red Zone (Risk):** Revenue < 2x Budget (Fails to cover Marketing & Theater splits).
-* **Blue Zone (Profit):** Revenue >= 2x Budget (True Profitability).
+The system automates the journey from raw API data to actionable AI insights.
 
-![Risk Matrix](assets/risk_matrix.jpg)
+```mermaid
+graph LR
+    A[TMDB API] -->|Raw JSON| B(Python ETL)
+    B -->|Cleaning & Logic| C[(SQL Server DW)]
+    C -->|Star Schema| D{Power BI}
+    C -->|Training Data| E[AI Model Stacking]
+    E -->|Predictions| D
+    D -->|Strategic Insights| F[Investor Report]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style C fill:#ccf,stroke:#333,stroke-width:2px
+    style E fill:#ff9,stroke:#333,stroke-width:2px
 
-### B. Market & Financial Overview
-Tracking cash flow trends, ROI by budget levels, and seasonal opportunities.
+```
 
-| Financial Dashboard | Market Dashboard |
-|:---:|:---:|
-| ![Financial](assets/financial_dashboard.jpg) | ![Market](assets/market_dashboard.jpg) |
-| *Cash Flow Tracking & Top Performers* | *ROI by Budget Levels & Seasonal Trends* |
-
----
-
-## 4. Strategic Executive Recommendations
-
-Based on the analysis of 7,242 commercial movies, the following **Core Investment Pillars** have been identified to optimize capital efficiency:
-
-### Pillar 1: The Polarization Strategy (Avoid the Middle)
-* **Action:** **Eliminate medium-budget projects ($20M - $100M).**
-* **Rationale:** Data proves this range is the "Death Valley" of investment—too expensive to be agile, but too cheap to be a spectacle. Investors should polarize capital: either fund **Ultra-Lean productions** (for high ROI efficiency) or **Massive Spectacles** (for market share), with no middle ground.
-
-### Pillar 2: Portfolio "Barbell" Structure
-* **Action:** **Use niche films to subsidize blockbusters.**
-* **Rationale:** High-budget films are volatile. The portfolio must be anchored by a steady stream of low-budget, high-ROI films (e.g., Horror/Documentary). These "Cash Cows" provide the operational liquidity to absorb the risks of larger, franchise-driven projects.
-
-### Pillar 3: Counter-Programming Releases
-* **Action:** **Exploit market inefficiencies by targeting "off-peak" windows.**
-* **Rationale:** Instead of competing head-to-head during saturated seasons (Summer), release schedules should target underserved windows (like Q1 or Q4). Data shows that releasing against the grain significantly lowers marketing costs (CPM) and increases screen retention.
-
-### Pillar 4: Risk Mitigation via IP
-* **Action:** **Restrict high-cap investments to established Intellectual Property.**
-* **Rationale:** Investing >$100M in original screenplays is statistically a gamble. The "Greenlight" for high-budget projects must be strictly reserved for Franchises, Sequels, or Adaptations to ensure a safety floor for revenue.
+* **Data Filters:** Commercial films only (Revenue & Budget > $1,000,000).
+* **Interactive Controls:** Marketing Cost Slider (Investor adjustable) & Exhibitor Share (Default 50%).
 
 ---
 
-## 5. Skills Demonstrated
+##  Phase 1: Strategic Market Analysis (Business Intelligence)
 
-* **Python Programming:**
-    * Automated ETL Pipeline development.
-    * Handling API Rate Limits & Pagination.
-    * **Multithreading:** Optimized data fetching speed by 10x.
-* **Database Management (SQL):**
-    * Data Warehouse design (Star Schema).
-    * Data Integrity & Normalization.
-* **Data Visualization (Power BI):**
-    * Advanced DAX (Calculated Columns for ROI, Dynamic Color Formatting).
-    * UI/UX Design for Dashboards.
-    * Storytelling with Data.
-* **Business Intelligence:**
-    * Translating raw numbers into actionable investment strategies.
-    * Risk Assessment & Portfolio Management.
+### 1. The Industry Health Check: "The Profit Squeeze"
+
+**Dashboard: Industry Financial Overview**
+
+![Industry Overview](assets/industry_overview_dashboard.jpg)
+
+* **A. The Revenue Paradox (Theatrical Break-even Analysis)**
+* **The Trend:** From 2010-2019, while Revenue (Green bars) reached all-time highs, the Total Cost line (Blue) paralleled it closely.
+* **The Insight:** We are earning more, but burning cash faster. The profit margin gap has been erased.
+* **Strategy Shift:** Theatrical release is no longer a Profit Center but a Marketing Center. It serves as a "Price Anchor" for streaming rights and an "IP Validator" for merchandise.
+
+
+* **B. Marketing Efficiency Collapse**
+* **The Metric:** Revenue per $1 Ad Spend.
+* **The Fall:** In 2019 (Golden Era), $1 of marketing generated **$7.5** in revenue. Post-2020, this efficiency dropped to **~$5.5**.
+* **Conclusion:** Customer acquisition costs have skyrocketed. It is significantly harder and more expensive to lure audiences to theaters than it was a decade ago.
+
+
+* **C. The Profit Squeeze (Cost Structure)**
+* **Exhibitor Share (Yellow):** Takes ~50% of GBO immediately. This is the largest fixed cost.
+* **The 2020 Collapse:** The profit layer (Green) vanished completely during the pandemic, revealing a fragile financial structure where costs often exceed 90% of revenue.
+* **The Reality:** Studios bear all production risks, but cinemas take the guaranteed share.
+
+
+* **D. The Money Burn (Waterfall Analysis)**
+* **The Shocking Truth:** Despite generating $582bn in total revenue, the industry shows a net loss of **-$22.5bn**.
+* **The Culprit:** The "Exhibitor Share" column (-$291bn) is larger than the Production Budget (-$209bn). The traditional business model is broken at the theatrical level, relying entirely on downstream revenue (Streaming/TV) to recoup losses.
+
+
+
+---
+
+### 2. Portfolio Strategy: The "Barbell" Investment Approach
+
+**Dashboard: Risk, Reward & Seasonality**
+
+![Portfolio Strategy](assets/portfolio_strategy_dashboard.jpg)
+
+* **A. Risk vs. Reward Profile**
+* **High Stakes (Action/Adventure):** High Upside (>$100M) but severe Downside (-$40M to -$50M). A volatile game.
+* **Safe Zone (Drama/Comedy):** Low risk (-$20M downside), but limited upside.
+* **The Strategy:** To achieve cash flow spikes, we must invest in Action, but it's a high-risk gamble.
+
+
+* **B. Capital Efficiency Curve**
+* **Law of Diminishing Returns:** As budgets increase (>$60M), ROI plummets toward zero.
+* **The Outlier:** Horror at the **$15M-$20M** range is the "King of Efficiency," consistently delivering the highest ROI. *"Bigger is not always Better."*
+
+
+* **C. Release Strategy & Budget Matrix (Heatmaps)**
+* **The "Halloween Effect":** Horror films released in October show the darkest green (highest win rate). Missing this window means losing 30-40% potential profit.
+* **The "Summer Blockbusters":** Animation/Fantasy must target June-July.
+* **The "Death Valley":** Mid-budget films ($20M-$50M), especially in History/War genres released in Q1, are statistically destined to fail.
+* **Budget Strategy:** Go Big (>$100M for spectacles) or Go Lean (<$10M for Horror). Avoid the middle ground.
+
+
 
 ---
 
-## 6. How to Run
+### 3. Talent Economics: "Unicorns" vs. "High Rollers"
 
-1.  **Clone Repository:**
-    ```bash
-    git clone [https://github.com/YourUsername/Movie-Analysis.git](https://github.com/YourUsername/Movie-Analysis.git)
-    ```
-2.  **Install Dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-3.  **Configuration:**
-    * Create a `Script/config.py` file.
-    * Add your TMDB API Key and SQL Server Name.
-4.  **Execute Pipeline:**
-    * Run `Run_pipeline.bat`. The system will automatically fetch, clean, and load the data.
+**Dashboard: Director & Talent Performance**
+
+![Talent Economics](assets/talent_economics_dashboard.jpg)
+
+* **A. Quantity vs. Efficiency (Market Correction)**
+* **Phase 1 (2010-2015):** High Volume (~300 movies), High ROI. The Golden Era.
+* **Phase 2 (2019-2021):** ROI crashed.
+* **Phase 3 (2022-Present):** "Less is More". Volume dropped to ~200 movies, but ROI spiked back to positive. The market is purging inefficient talent and projects.
+
+
+* **B. The Talent Matrix (Strategy)**
+*  **Unicorns (e.g., James Cameron, James Wan):** High Profit + High Win Rate (>90%). *Action: Greenlight Immediately. Give them flagship IPs.*
+*  **High Rollers (e.g., Nolan, Jackson):** Massive Revenue but lower Win Rate (60-70%) & High Budgets. *Action: Strict Controls. Apply hard budget caps and profit-sharing models to mitigate risk.*
+*  **Safe Hands (e.g., Jon Favreau):** Consistent Win Rate (>80%) but moderate upside. *Action: Portfolio Stabilizers. Use them for sequels and reboots to ensure financial safety.*
+
+
+* **C. The "Blockbuster" Saturation**
+* Data shows that increasing the number of top-tier director releases beyond 18 per year yields diminishing returns on total industry revenue. The market has a saturation point for blockbusters.
+
+
 
 ---
-*Author: Lam Hai Duong*
+
+##  Phase 2: Predictive Modeling (Machine Learning)
+
+To operationalize these insights, I built a **Stacking Ensemble Regressor** to predict Box Office Revenue before production begins.
+
+### Feature Engineering
+
+* **Time-Travel Rolling Features:** Calculated Star Power (Cast/Director) using *only* past data to prevent data leakage.
+* **Inflation Adjustment:** All financial metrics normalized to 2024 USD (CPI-Adjusted).
+* **Log-Transformation:** Handled extreme revenue skewness.
+
+### Model Performance
+
+The Stacking Model (combining XGBoost, Gradient Boosting, LightGBM) achieved the lowest error rate, outperforming traditional Linear Regression.
+
+| Model | RMSE (Log Scale) | R² Score |
+| --- | --- | --- |
+| Linear Regression | 1.1438 | 0.6082 |
+| XGBoost | 1.1021 | 0.6362 |
+| **Stacking Ensemble (Final)** | **1.1002** | **0.6374** |
+
+![Feature Importance](assets/feature_importance.png)
+
+> *Budget and Franchise status remain the dominant predictors, confirming the "Pay-to-Play" nature of modern blockbusters.*
+
+---
+
+##  Final Recommendation: The Action Plan
+
+Based on data from **5,844 films**, the following Investment Guidelines are proposed:
+
+1. **Defensive Allocation (40% Capital):** Focus on Horror/Thriller films with budgets <$10M. Release in October. These are the statistical "Safety Net."
+2. **Offensive Allocation (40% Capital):** Invest in Franchise IP (Animation/Action) with budgets >$100M. Release in Summer (June/July). Avoid the $20M-$50M "Dead Zone."
+3. **Risk Mitigation:** Stop direct production investment in History/War genres. Transition these to licensing models to minimize downside risk.
+4. **Talent Management:** Prioritize directors with a historical ROI > 0.1. Move away from volume-based hiring to efficiency-based hiring.
+
+---
+
+##  How to Run
+
+1. **Clone the Repo:**
+```bash
+git clone [https://github.com/YourRepo/Movie-Analysis-Pipeline.git](https://github.com/YourRepo/Movie-Analysis-Pipeline.git)
+
+```
+
+
+2. **Install Requirements:**
+```bash
+pip install -r requirements.txt
+
+```
+
+
+3. **Run Pipeline (ETL + Training):**
+```bash
+# Step 1: Fetch and Process Data
+python src/feature_engineering.py
+
+# Step 2: Train AI Model
+python src/train_model.py
+
+```
+
+
+4. **Launch App:**
+```bash
+streamlit run app.py
+
+```
+
+
+
+---
+
+**Author:** Lam Hai Duong
+
+*Analyzing the Art of Film with the Science of Data.*
+
+```
+
+```
