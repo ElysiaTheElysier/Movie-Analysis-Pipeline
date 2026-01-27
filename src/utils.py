@@ -30,7 +30,7 @@ def analyze_risk_and_safety(budget, raw_pred, dir_raw, cast_raw, is_franchise, o
     if is_high_budget and is_unknown_crew:
         risk_score += 0.8
         warnings.append("High budget specified but Director and Cast are unknown or have low historical power.")
-        return raw_pred * 0.1, raw_pred * 0.05, warnings, risk_score # Trả về đủ 4 giá trị nếu cần
+        return raw_pred * 0.1, raw_pred * 0.05, warnings
 
     # Check nội dung
     overview_len = len(str(overview).strip())
