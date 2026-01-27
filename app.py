@@ -15,7 +15,7 @@ if ROOT_DIR not in sys.path:
 
 from src.utils import get_power_score, analyze_risk_and_safety
 
-st.set_page_config(page_title="Hollywood Dashboard", page_icon=None, layout="wide")
+st.set_page_config(page_title="Hollywood Dashboard", page_icon=🎬, layout="wide")
 
 
 st.markdown("""
