@@ -16,7 +16,7 @@
 
 The system automates the journey from raw API data to investor-ready insights and ML Model.
 
-![Dataflow](workflow.jpg)
+![Dataflow](assets/workflow.jpg)
 
 **Key Design Choices**
 - **Data Filters:** Commercial films only (Revenue > $1M, Budget > $1M)
