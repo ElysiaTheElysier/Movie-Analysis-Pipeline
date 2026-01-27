@@ -14,17 +14,9 @@
 
 ## ⚙️ System Architecture – Data Pipeline
 
-The system automates the journey from raw API data to investor-ready insights.
+The system automates the journey from raw API data to investor-ready insights and ML Model.
 
-TMDB API  
-→ Raw JSON  
-→ Python ETL (Cleaning & Business Logic)  
-→ SQL Server Data Warehouse (Star Schema)  
-→ Power BI (Dashboards)  
-→ Stacking ML Model (Training Data)  
-→ Predictions  
-→ Strategic Insights  
-→ Investor Report  
+![Dataflow](workflow.jpg)
 
 **Key Design Choices**
 - **Data Filters:** Commercial films only (Revenue > $1M, Budget > $1M)
