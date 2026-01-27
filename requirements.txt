@@ -2,7 +2,7 @@ pandas
 requests
 sqlalchemy
 pyodbc
-streamlit
+streamlit>=1.53.0
 numpy
 scikit-learn>=1.8.0
 joblib
