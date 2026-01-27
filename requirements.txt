@@ -4,7 +4,7 @@ sqlalchemy
 pyodbc
 streamlit
 numpy
-scikit-learn
+scikit-learn>=1.8.0
 joblib
 xgboost
 lightgbm
