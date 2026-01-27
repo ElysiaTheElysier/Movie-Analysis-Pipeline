@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 import config
 
-# --- CONFIGURATION ---
 API_KEY = config.TMDB_API_KEY
 SERVER = config.SERVER_NAME
 DB = "Movie_DB"
@@ -19,11 +18,9 @@ def get_db():
     )
     return create_engine(f"mssql+pyodbc:///?odbc_connect={params}", fast_executemany=True)
 
-# --- SCHEMA OPS (AUTO-FIX TABLES) ---
 def init_db():
     engine = get_db()
-    with engine.begin() as conn: # Use transaction to ensure schema is committed
-        # 1. Create Tables if not exist
+    with engine.begin() as conn:
         conn.execute(text("""
             IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Dim_Movie_Rich_Info' AND xtype='U')
             CREATE TABLE Dim_Movie_Rich_Info (
@@ -37,8 +34,6 @@ def init_db():
             )
         """))
         
-        # 2. Force-Patch Missing Columns (Safe run)
-        # Using try-catch block in SQL to ignore errors if column exists
         conn.execute(text("""
             IF COL_LENGTH('Dim_Movie_Rich_Info', 'production_company') IS NULL
             BEGIN
@@ -52,7 +47,6 @@ def init_db():
             END
         """))
 
-        # 3. Create Credits Table
         conn.execute(text("""
             IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Bridge_Credits' AND xtype='U')
             CREATE TABLE Bridge_Credits (
@@ -64,14 +58,11 @@ def init_db():
                 item_order INT
             )
         """))
-    print("[INFO] Database schema verified and patched successfully.")
+    print("Database is ready.")
 
-# --- DATA OPS (ROBUST UPSERT) ---
 def robust_upsert(df, table_name, pk_cols, engine):
     if df.empty: return
     
-    # CRITICAL FIX: Remove internal duplicates to prevent MERGE failure
-    # If source has 2 identical rows, MERGE throws PK Violation
     df = df.drop_duplicates(subset=pk_cols, keep='first')
 
     temp_table = f"Temp_{table_name}_{int(datetime.now().timestamp())}"
@@ -84,7 +75,6 @@ def robust_upsert(df, table_name, pk_cols, engine):
         insert_cols = ", ".join(cols)
         insert_vals = ", ".join([f"source.{c}" for c in cols])
         
-        # Only generate UPDATE clause if there are non-PK columns
         when_matched = f"WHEN MATCHED THEN UPDATE SET {update_set}" if update_set else ""
         
         sql = f"""
@@ -99,11 +89,10 @@ def robust_upsert(df, table_name, pk_cols, engine):
             conn.execute(text(sql))
             conn.execute(text(f"DROP TABLE {temp_table}"))
     except Exception as e:
-        print(f"[ERROR] Upsert failed for {table_name}: {e}")
+        print(f"Could not update {table_name}: {e}")
 
 def upsert_genres(df, engine):
     if df.empty: return
-    # Deduplicate genres dataframe as well
     df = df.drop_duplicates()
     
     temp_table = f"Temp_Genres_{int(datetime.now().timestamp())}"
@@ -191,17 +180,15 @@ def fetch_movie_details(mid):
         return {'dim': dim_movie, 'fact': fact_fin, 'rich': rich_info, 'credits': credits_data, 'genres': genres_data}
     except: return None
 
-# --- MAIN EXECUTION ---
 def run():
-    print(f"[{datetime.now()}] Starting ETL pipeline (Fixed Version)...")
-    init_db() # Ensure schema is ready
+    print(f"Starting the process at {datetime.now()}...")
+    init_db()
     eng = get_db()
     
     candidates = set()
     years = range(2000, 2027) 
-    print("Scanning TMDB for movie candidates...")
+    print("Searching for movies on TMDB...")
     
-    # Using 3 main strategies to get best coverage
     for year in years:
         strategies = [('popularity.desc', 5), ('revenue.desc', 3), ('vote_count.desc', 2)]
         for sort_by, pages in strategies:
@@ -212,7 +199,7 @@ def run():
                     for i in res: candidates.add(i['id'])
                 except: continue
                 
-    print(f"Found {len(candidates)} unique candidates to process.")
+    print(f"Found {len(candidates)} movies to download.")
 
     batch_size = 200
     buffer = {'dim': [], 'fact': [], 'rich': [], 'credits': [], 'genres': []}
@@ -229,28 +216,24 @@ def run():
                 buffer['credits'].extend(res['credits'])
                 buffer['genres'].extend(res['genres'])
             
-            # Save Batch
             if (idx + 1) % batch_size == 0 or (idx + 1) == len(futures):
-                print(f"Saving batch {idx+1}/{len(candidates)}...")
+                print(f"Saving batch {idx+1} of {len(candidates)}...")
                 
-                # Convert to DataFrame
                 df_dim = pd.DataFrame(buffer['dim'])
                 df_fact = pd.DataFrame(buffer['fact'])
                 df_rich = pd.DataFrame(buffer['rich'])
                 df_cred = pd.DataFrame(buffer['credits'])
                 df_gen = pd.DataFrame(buffer['genres'])
 
-                # UPSERT with Deduplication
                 robust_upsert(df_dim, 'Dim_Movies', ['movie_id'], eng)
                 robust_upsert(df_fact, 'Fact_Financials', ['movie_id'], eng)
                 robust_upsert(df_rich, 'Dim_Movie_Rich_Info', ['movie_id'], eng)
                 robust_upsert(df_cred, 'Bridge_Credits', ['credit_unique_id'], eng)
                 upsert_genres(df_gen, eng)
                 
-                # Reset Buffer
                 buffer = {'dim': [], 'fact': [], 'rich': [], 'credits': [], 'genres': []}
 
-    print(f"[{datetime.now()}] ETL process completed successfully.")
+    print(f"Done. Finished at {datetime.now()}.")
 
 if __name__ == "__main__":
     run()

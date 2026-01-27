@@ -2,3 +2,12 @@ pandas
 requests
 sqlalchemy
 pyodbc
+streamlit
+numpy
+scikit-learn
+joblib
+xgboost
+lightgbm
+matplotlib
+seaborn
+
