@@ -10,6 +10,13 @@
 > The film industry is facing a **Revenue Paradox** — while Gross Box Office reaches record highs, **Net Profit Margins are collapsing** under marketing inflation and production cost squeeze.
 > This project moves beyond vanity metrics toward **Capital Efficiency**, using a **26-year dataset (2000–2025)** to identify safe investment zones and predict ROI with Machine Learning.
 
+## 🌐 Live Demo Access
+👉 **[Click here to view Interactive Power BI Dashboard](https://app.powerbi.com/view?r=eyJrIjoiN2Q0ZjcxY2EtNmRlNy00Y2VjLTg4MGQtZDE5YjRlYmYyY2U5IiwidCI6IjVlOGIzMjY5LTc2Y2EtNDU3Yy04NDdmLTQ0NGUzZGI5ODZhNyIsImMiOjl9)**
+*(Explore the Profit Squeeze, Portfolio Strategy, and Talent Economics in real-time)*
+
+👉 **[Click here to try the AI Prediction App (Streamlit)](https://movie-analysis-pipeline-dzzjekfixsnlpq9ytgw2tx.streamlit.app/)**
+*(Input your movie idea and get an instant ROI prediction)*
+
 ---
 
 ## ⚙️ System Architecture – The Data Pipeline
