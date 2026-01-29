@@ -4,21 +4,30 @@ import urllib
 import os
 from sqlalchemy import create_engine
 import config 
-
+import logging
+from datetime import datetime
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-
 DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
+LOG_DIR = os.path.join(CURRENT_DIR, 'logs')
 OUTPUT_FILE = os.path.join(DATA_DIR, 'AI_Training_Data.csv')
 
+if not os.path.exists(LOG_DIR): os.makedirs(LOG_DIR)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s | %(levelname)s | %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(LOG_DIR, f"feature_engineering_{datetime.now():%Y%m%d}.log")),
+        logging.StreamHandler()
+    ]
+)
 
 SERVER = config.SERVER_NAME
 DB = "Movie_DB"
 params = urllib.parse.quote_plus(f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={SERVER};DATABASE={DB};Trusted_Connection=yes;")
 engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
-
 
 CPI_DATA = {
     2000: 172.2, 2001: 177.1, 2002: 179.9, 2003: 184.0, 2004: 188.9,
@@ -36,7 +45,7 @@ def adjust_for_inflation(amount, year):
     return amount * (cpi_2024 / cpi_year)
 
 def load_data():
-    print("Loading raw data from SQL Server...")
+    logging.info("Loading raw data from SQL Server...")
     query_movies = """
     SELECT 
         m.movie_id, m.title, m.release_date, m.year,
@@ -51,7 +60,11 @@ def load_data():
     """
     df_movies = pd.read_sql(query_movies, engine)
     
-    print("Adjusting Budget & Revenue for Inflation (Base 2024)...")
+    # Calculate month from release_date explicitly
+    df_movies['release_date'] = pd.to_datetime(df_movies['release_date'])
+    df_movies['month'] = df_movies['release_date'].dt.month
+
+    logging.info("Adjusting Budget & Revenue for Inflation (Base 2024)...")
     df_movies['budget_adj'] = df_movies.apply(lambda x: adjust_for_inflation(x['budget'], x['year']), axis=1)
     df_movies['revenue_adj'] = df_movies.apply(lambda x: adjust_for_inflation(x['revenue'], x['year']), axis=1)
     
@@ -66,7 +79,7 @@ def load_data():
     return df_movies, df_credits, df_genres
 
 def calculate_rolling_features(df_movies, df_credits):
-    print("Starting Time-Travel Feature Engineering...")
+    logging.info("Starting Time-Travel Feature Engineering...")
     person_history = {} 
     cast_power_list = []
     director_power_list = []
@@ -83,7 +96,6 @@ def calculate_rolling_features(df_movies, df_credits):
         if mid in credits_group.groups:
             crew_data = credits_group.get_group(mid)
             
-            # Actor Power
             actors = crew_data[crew_data['role'] == 'Actor'].sort_values('item_order').head(3)
             actor_revs = []
             for pid in actors['person_id']:
@@ -93,14 +105,12 @@ def calculate_rolling_features(df_movies, df_credits):
                     actor_revs.append(avg_rev)
             current_cast_power = np.mean(actor_revs) if actor_revs else 0
             
-            # Director Power
             director = crew_data[crew_data['role'] == 'Director'].head(1)
             for pid in director['person_id']:
                 if pid in person_history:
                     history = person_history[pid]
                     current_dir_power = np.mean(history[-5:]) if history else 0
 
-            # Update History
             if revenue > 0:
                 for pid in crew_data['person_id']:
                     if pid not in person_history: person_history[pid] = []
@@ -109,7 +119,7 @@ def calculate_rolling_features(df_movies, df_credits):
         cast_power_list.append(current_cast_power)
         director_power_list.append(current_dir_power)
         
-        if idx % 2000 == 0: print(f"   Processed {idx}/{len(df_movies)} movies...")
+        if idx % 2000 == 0: logging.info(f"   Processed {idx}/{len(df_movies)} movies...")
 
     df_movies['cast_power'] = cast_power_list
     df_movies['director_power'] = director_power_list
@@ -119,23 +129,22 @@ def run_pipeline():
     df, credits, genres = load_data()
     df = calculate_rolling_features(df, credits)
     
-    print("Encoding Genres...")
+    logging.info("Encoding Genres...")
     genres_pivot = pd.crosstab(genres['movie_id'], genres['genre_name']).add_prefix('genre_')
     df = df.merge(genres_pivot, on='movie_id', how='left').fillna(0)
     
-    print("Encoding Metadata...")
+    logging.info("Encoding Metadata...")
     df['is_franchise'] = df['collection_name'].apply(lambda x: 1 if x and x != 'Stand-alone' else 0)
     rating_map = {'G': 0, 'PG': 1, 'PG-13': 2, 'R': 3, 'NC-17': 4, 'NR': 2}
     df['rating_score'] = df['mpaa_rating'].map(rating_map).fillna(2)
     
-
     os.makedirs(DATA_DIR, exist_ok=True) 
     
     final_df = df.drop(columns=['collection_name', 'mpaa_rating', 'production_company', 'budget_raw', 'revenue_raw', 'budget_adj', 'revenue_adj']) 
     final_df.to_csv(OUTPUT_FILE, index=False)
     
-    print(f"\nFeature Engineering Complete!")
-    print(f"-> Saved file to: {OUTPUT_FILE}")
+    logging.info(f"Feature Engineering Complete!")
+    logging.info(f"-> Saved file to: {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     run_pipeline()

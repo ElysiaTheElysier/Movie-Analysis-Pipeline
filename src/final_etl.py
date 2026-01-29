@@ -5,12 +5,43 @@ from sqlalchemy import create_engine, text
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 import config
+import logging
+import os
+import traceback
+from requests.adapters import HTTPAdapter # <--- Mới thêm cái này để chỉnh Pool
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR = os.path.join(CURRENT_DIR, 'logs')
+
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
+log_filename = os.path.join(LOG_DIR, f"etl_process_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s | %(levelname)-8s | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.FileHandler(log_filename, encoding='utf-8'), 
+        logging.StreamHandler() 
+    ]
+)
+
+logging.info("Logging system initialized.")
 
 API_KEY = config.TMDB_API_KEY
 SERVER = config.SERVER_NAME
 DB = "Movie_DB"
-WORKERS = 20
+WORKERS = 20 # Số lượng công nhân
 SESSION = requests.Session()
+
+# --- ĐOẠN FIX LỖI POOL FULL ---
+# Nới rộng bể chứa kết nối bằng đúng số lượng workers (20)
+adapter = HTTPAdapter(pool_connections=WORKERS, pool_maxsize=WORKERS)
+SESSION.mount('https://', adapter)
+SESSION.mount('http://', adapter)
+# ------------------------------
 
 def get_db():
     params = urllib.parse.quote_plus(
@@ -58,7 +89,7 @@ def init_db():
                 item_order INT
             )
         """))
-    print("Database is ready.")
+    logging.info("Database is ready.")
 
 def robust_upsert(df, table_name, pk_cols, engine):
     if df.empty: return
@@ -87,9 +118,15 @@ def robust_upsert(df, table_name, pk_cols, engine):
         """
         with engine.begin() as conn:
             conn.execute(text(sql))
-            conn.execute(text(f"DROP TABLE {temp_table}"))
+
     except Exception as e:
-        print(f"Could not update {table_name}: {e}")
+        logging.error(f"CRITICAL ERROR: Cannot Update {table_name}. Details: {e}")
+    finally: 
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(f"IF OBJECT_ID('{temp_table}', 'U') IS NOT NULL DROP TABLE {temp_table}"))
+        except:
+            pass
 
 def upsert_genres(df, engine):
     if df.empty: return
@@ -111,7 +148,7 @@ def upsert_genres(df, engine):
             conn.execute(text(sql))
             conn.execute(text(f"DROP TABLE {temp_table}"))
     except Exception as e:
-        pass 
+        logging.error(f"Error when Upsert Genres: {e}")
 
 def fetch_movie_details(mid):
     url = f"https://api.themoviedb.org/3/movie/{mid}?api_key={API_KEY}&append_to_response=credits,release_dates"
@@ -178,16 +215,21 @@ def fetch_movie_details(mid):
         genres_data = [{'movie_id': d['id'], 'genre_name': g['name']} for g in d.get('genres', [])]
 
         return {'dim': dim_movie, 'fact': fact_fin, 'rich': rich_info, 'credits': credits_data, 'genres': genres_data}
-    except: return None
+    except requests.exceptions.Timeout:
+        logging.warning(f"Timeout: Connection took too long for Movie ID {mid}")
+        return None
+    except Exception as e:
+        logging.error(f"Unexpected error when fetching Movie ID {mid}: {e}")
+        return None
 
 def run():
-    print(f"Starting the process at {datetime.now()}...")
+    logging.info(f"Starting the process at {datetime.now()}...")
     init_db()
     eng = get_db()
     
     candidates = set()
     years = range(2000, 2027) 
-    print("Searching for movies on TMDB...")
+    logging.info("Searching for movies on TMDB...")
     
     for year in years:
         strategies = [('popularity.desc', 5), ('revenue.desc', 3), ('vote_count.desc', 2)]
@@ -199,7 +241,7 @@ def run():
                     for i in res: candidates.add(i['id'])
                 except: continue
                 
-    print(f"Found {len(candidates)} movies to download.")
+    logging.info(f"Found {len(candidates)} movies to download.")
 
     batch_size = 200
     buffer = {'dim': [], 'fact': [], 'rich': [], 'credits': [], 'genres': []}
@@ -217,7 +259,7 @@ def run():
                 buffer['genres'].extend(res['genres'])
             
             if (idx + 1) % batch_size == 0 or (idx + 1) == len(futures):
-                print(f"Saving batch {idx+1} of {len(candidates)}...")
+                logging.info(f"Saving batch {idx+1} of {len(candidates)}...")
                 
                 df_dim = pd.DataFrame(buffer['dim'])
                 df_fact = pd.DataFrame(buffer['fact'])
@@ -233,7 +275,7 @@ def run():
                 
                 buffer = {'dim': [], 'fact': [], 'rich': [], 'credits': [], 'genres': []}
 
-    print(f"Done. Finished at {datetime.now()}.")
+    logging.info("ETL Pipeline Finished")
 
 if __name__ == "__main__":
     run()
