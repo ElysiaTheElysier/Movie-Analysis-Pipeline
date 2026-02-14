@@ -50,7 +50,9 @@ def load_data():
     SELECT 
         m.movie_id, m.title, m.release_date, m.year,
         f.budget, f.revenue,
-        r.runtime, r.mpaa_rating, r.collection_name, r.production_company
+        r.runtime, ISNULL(r.mpaa_rating, 'NR') as mpaa_rating, 
+        ISNULL(r.collection_name, 'Stand-alone') as collection_name, 
+        r.production_company
     FROM Dim_Movies m
     JOIN Fact_Financials f ON m.movie_id = f.movie_id
     JOIN Dim_Movie_Rich_Info r ON m.movie_id = r.movie_id
@@ -60,9 +62,8 @@ def load_data():
     """
     df_movies = pd.read_sql(query_movies, engine)
     
-    # Calculate month from release_date explicitly
-    df_movies['release_date'] = pd.to_datetime(df_movies['release_date'])
-    df_movies['month'] = df_movies['release_date'].dt.month
+    df_movies['release_date'] = pd.to_datetime(df_movies['release_date'], errors='coerce')
+    df_movies['month'] = df_movies['release_date'].dt.month.fillna(6).astype(int)
 
     logging.info("Adjusting Budget & Revenue for Inflation (Base 2024)...")
     df_movies['budget_adj'] = df_movies.apply(lambda x: adjust_for_inflation(x['budget'], x['year']), axis=1)
@@ -119,7 +120,7 @@ def calculate_rolling_features(df_movies, df_credits):
         cast_power_list.append(current_cast_power)
         director_power_list.append(current_dir_power)
         
-        if idx % 2000 == 0: logging.info(f"   Processed {idx}/{len(df_movies)} movies...")
+        if idx > 0 and idx % 2000 == 0: logging.info(f"   Processed {idx}/{len(df_movies)} movies...")
 
     df_movies['cast_power'] = cast_power_list
     df_movies['director_power'] = director_power_list
@@ -143,7 +144,7 @@ def run_pipeline():
     final_df = df.drop(columns=['collection_name', 'mpaa_rating', 'production_company', 'budget_raw', 'revenue_raw', 'budget_adj', 'revenue_adj']) 
     final_df.to_csv(OUTPUT_FILE, index=False)
     
-    logging.info(f"Feature Engineering Complete!")
+    logging.info("Feature Engineering Complete!")
     logging.info(f"-> Saved file to: {OUTPUT_FILE}")
 
 if __name__ == "__main__":

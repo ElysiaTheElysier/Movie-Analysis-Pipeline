@@ -10,4 +10,5 @@ xgboost
 lightgbm
 matplotlib
 seaborn
-
+sentence-transformers
+optuna

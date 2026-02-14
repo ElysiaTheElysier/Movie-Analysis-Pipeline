@@ -116,9 +116,9 @@ The system automates the journey from raw API data to investor-ready insights an
 
 | Model | RMSE (Log) | R² |
 | :--- | :---: | :---: |
-| Linear Regression | 1.1438 | 0.6082 |
-| XGBoost | 1.1021 | 0.6362 |
-| **Stacking Ensemble (Final)** | **1.1002** | **0.6374** |
+| Linear Regression | 1.1362 | 0.6026 |
+| XGBoost | 1.0800 | 0.6409 |
+| **Stacking Ensemble (Final)** | **1.0786** | **0.6419** |
 
 ![Feature Importance](assets/feature_importance.png)
 
